@@ -1,0 +1,6 @@
+{
+  "name": "Ignitus Core — Gladiator Protocol Sales Engine",
+  "description": "High-impact technical audit, revenue leak calculator, and Gladiator Protocol sales proposal orchestrator for closing contractor and local business clients.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
