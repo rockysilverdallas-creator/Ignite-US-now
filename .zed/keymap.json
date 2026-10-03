@@ -1,0 +1,9 @@
+[
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-shift-b": "task::Spawn",
+      "ctrl-alt-z": "assistant::ToggleFocus"
+    }
+  }
+]

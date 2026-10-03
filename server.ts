@@ -1,12 +1,60 @@
+import "dotenv/config";
 import express from "express";
 import path from "path";
 import { GoogleGenAI, Type } from "@google/genai";
-import { createServer as createViteServer } from "vite";
+import { BigQuery } from "@google-cloud/bigquery";
+import { ExternalAccountClient } from "google-auth-library";
+
+// ── BigQuery client (Workload Identity Federation — no JSON key) ──────────
+const GCP_PROJECT_ID = process.env.GCP_PROJECT_ID || "ignitus-d1e7b";
+const WIF_PROVIDER   = process.env.GCP_WORKLOAD_IDENTITY_PROVIDER || "";
+const SA_EMAIL       = process.env.GCP_SERVICE_ACCOUNT_EMAIL || "ignitus-shaer-sa@ignitus-d1e7b.iam.gserviceaccount.com";
+
+import { writeFileSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
+
+let bq: BigQuery;
+if (WIF_PROVIDER && process.env.VERCEL_OIDC_TOKEN) {
+  // Vercel injects VERCEL_OIDC_TOKEN per-request as an env var.
+  // Write it to a temp file so ExternalAccountClient.fromJSON can read it.
+  const tokenFile = join(tmpdir(), `vercel-oidc-${Date.now()}.txt`);
+  writeFileSync(tokenFile, process.env.VERCEL_OIDC_TOKEN, "utf8");
+
+  const authClient = ExternalAccountClient.fromJSON({
+    type: "external_account",
+    audience: `//iam.googleapis.com/${WIF_PROVIDER}`,
+    subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
+    token_url: "https://sts.googleapis.com/v1/token",
+    service_account_impersonation_url:
+      `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${SA_EMAIL}:generateAccessToken`,
+    credential_source: {
+      file: tokenFile,
+      format: { type: "text" },
+    },
+  }) as any;
+  bq = new BigQuery({ projectId: GCP_PROJECT_ID, authClient });
+} else {
+  // Local dev — falls back to ADC (gcloud auth application-default login)
+  bq = new BigQuery({ projectId: GCP_PROJECT_ID });
+}
+
+import { apiRouter } from "./src/routes/apiRouter";
+import { WebMCPService } from "./src/services/webMcpService";
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use("/api", apiRouter);
+
+// WebMCP Discovery Endpoints for External Agents (Gemini in Chrome, Claude, Perplexity)
+app.get(["/.well-known/webmcp.json", "/webmcp.json"], (req, res) => {
+  const protocol = req.headers["x-forwarded-proto"] || "http";
+  const host = req.headers.host || "localhost:3000";
+  res.json(WebMCPService.getManifest(`${protocol}://${host}`));
+});
 
 // Initialize Gemini SDK with telemetry header
 const ai = new GoogleGenAI({
@@ -119,7 +167,7 @@ Projected Close Rate: ${closeRate}%
 Calculated Leak: $${mathResults.monthlyLeak.toLocaleString()}/mo ($${mathResults.annualLeak.toLocaleString()}/yr)`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -317,9 +365,48 @@ Calculated Leak: $${mathResults.monthlyLeak.toLocaleString()}/mo ($${mathResults
   }
 });
 
+// ── Log Audit to BigQuery ─────────────────────────────────────────────────
+app.post("/api/log-audit", async (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || !payload.clientInfo) {
+      return res.status(400).json({ error: "Missing audit payload" });
+    }
+
+    const dataset = bq.dataset("ignitus_audits");
+    const table   = dataset.table("audit_log");
+
+    const row = {
+      audit_id:          payload.clientInfo.id || `audit-${Date.now()}`,
+      client_name:       payload.clientInfo.clientName || "",
+      target_domain:     payload.clientInfo.targetDomain || "",
+      niche:             payload.clientInfo.niche || "",
+      location:          payload.clientInfo.location || "",
+      avg_job_value:     payload.clientInfo.avgJobValue || 0,
+      current_leads:     payload.clientInfo.currentLeads || 0,
+      close_rate:        payload.clientInfo.closeRate || 0,
+      monthly_leak:      payload.calculatedLeak?.monthlyLeak || 0,
+      annual_leak:       payload.calculatedLeak?.annualLeak || 0,
+      efficiency_lift:   payload.calculatedLeak?.efficiencyLiftPct || 0,
+      rcs_bot_id:        process.env.RCS_BOT_ID || "",
+      site_node:         process.env.NEXT_PUBLIC_SITE_NODE || "",
+      created_at:        BigQuery.timestamp(new Date()),
+    };
+
+    await table.insert([row]);
+    res.json({ success: true, audit_id: row.audit_id });
+  } catch (error: any) {
+    console.error("BigQuery log error:", error);
+    res.status(500).json({ error: "Failed to log audit", message: error?.message });
+  }
+});
+
+export default app;
+
 async function startServer() {
   // Vite middleware in dev
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -338,4 +425,7 @@ async function startServer() {
   });
 }
 
-startServer();
+// Only start the standalone HTTP listener if not running in a serverless environment (e.g. Vercel)
+if (!process.env.VERCEL) {
+  startServer();
+}

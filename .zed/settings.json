@@ -1,0 +1,62 @@
+{
+  "theme": {
+    "mode": "dark",
+    "light": "One Light",
+    "dark": "Zed Dark"
+  },
+  "buffer_font_family": "JetBrains Mono",
+  "buffer_font_size": 13.5,
+  "buffer_line_height": {
+    "custom": 1.6
+  },
+  "ui_font_family": "Inter",
+  "ui_font_size": 13,
+  "autosave": "on_focus_change",
+  "tab_size": 2,
+  "hard_tabs": false,
+  "format_on_save": "on",
+  "formatter": "language_server",
+  "telemetry": {
+    "diagnostics": false,
+    "metrics": false
+  },
+  "collaboration_panel": {
+    "button": true,
+    "dock": "right"
+  },
+  "assistant": {
+    "enabled": true,
+    "version": "2",
+    "default_model": {
+      "provider": "google",
+      "model": "gemini-2.5-flash"
+    }
+  },
+  "languages": {
+    "TypeScript": {
+      "tab_size": 2,
+      "format_on_save": "on",
+      "language_servers": ["typescript-language-server", "..."]
+    },
+    "TSX": {
+      "tab_size": 2,
+      "format_on_save": "on",
+      "language_servers": ["typescript-language-server", "..."]
+    },
+    "JSON": {
+      "tab_size": 2,
+      "format_on_save": "on"
+    }
+  },
+  "terminal": {
+    "shell": {
+      "program": "powershell.exe"
+    },
+    "font_family": "JetBrains Mono",
+    "font_size": 13
+  },
+  "project_panel": {
+    "dock": "left",
+    "git_status": true
+  }
+}

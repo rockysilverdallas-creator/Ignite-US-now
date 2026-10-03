@@ -10,11 +10,26 @@ import { ClientPresentationModal } from "./components/ClientPresentationModal";
 import { WorkspaceHub } from "./components/WorkspaceHub";
 import { MultiFormatOutputHub } from "./components/MultiFormatOutputHub";
 import { CaptioningSocialPositioning } from "./components/CaptioningSocialPositioning";
+import { SocialAgentConsole } from "./components/SocialAgentConsole";
+import { CommandConsole } from "./components/CommandConsole";
 import { PipelineController } from "./components/PipelineController";
 import { IgnitusCoreGateway } from "./components/IgnitusCoreGateway";
+import { AgentChat } from "./components/AgentChat";
+import { ZedEditorDeck } from "./components/ZedEditorDeck";
+import { CobraTrojanDeck } from "./components/CobraTrojanDeck";
+import { CommercialSettlementVehicle } from "./components/CommercialSettlementVehicle";
 import { DEFAULT_BOB_PRESET } from "./presets";
+import {
+  AVATAR_PERSONAS,
+  INITIAL_VAULT_FILES,
+  INITIAL_CHECKINS,
+  INITIAL_KANBAN_ITEMS,
+  INITIAL_DMAIC_PROJECTS,
+  INITIAL_FINANCIAL_MODEL,
+} from "./presets/sparkZedPresets";
 import { AuditResponse } from "./types";
-import { ArrowRight, ShieldAlert, Layers, Presentation, Sparkles, Building, Globe, HardDrive, FileText, Video, Rss, MessageSquare } from "lucide-react";
+import { ChatMessage, AvatarPersona, VaultFile } from "./types/sparkZedTypes";
+import { ArrowRight, ShieldAlert, Layers, Presentation, Sparkles, Building, Globe, HardDrive, FileText, Video, Rss, MessageSquare, Bot } from "lucide-react";
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>("audit");
@@ -22,6 +37,109 @@ export function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isPresentationOpen, setIsPresentationOpen] = useState<boolean>(false);
   const [auditError, setAuditError] = useState<string | null>(null);
+
+  // Agent Chat & Sovereign Battle Unit State
+  const [activePersona, setActivePersona] = useState<AvatarPersona>(AVATAR_PERSONAS[0]);
+  const [vaultFiles, setVaultFiles] = useState<VaultFile[]>(INITIAL_VAULT_FILES);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
+    {
+      id: "msg-welcome",
+      sender: "agent",
+      text: "Agent SHAH online. Supreme Battle Unit Commander operational across the 4 Specific SHAH Agents: SHAH_COBRA_STRIKE, SHAH_SWARM_INFILTRATOR, SHAH_SPEED_DISPATCH, and SHAH_SOVEREIGN_CLOSER. COBRA Trojan Strike & Competitor Map Capture is fully unified. All outgoing disbursements are strictly air-gapped to you alone. Standing by for directives.",
+      timestamp: Date.now(),
+      avatarMood: "Strategic Commander",
+      reasoning: "Stage 1: Verified 4 Command Pillars engaged.\nStage 2: COBRA Trojan Strike & Competitor Map Capture active across regional market nodes.\nStage 3: Social Swarm Infiltration Mesh engaged across LinkedIn, X, Meta & TikTok with Third-Party Human Stealth Masking (Chrome 133 Desktop).\nStage 4: Verified SOVEREIGN AIR-GAP: Zero unauthorized outgoing funds allowed without explicit signature.\nStage 5: Triad Engine (Spark DAG 1.48M ops/s + ZED 128K context + LLaMA 3.3 CoT) ready.",
+      engineUsed: "Spark • ZED • LLaMA Hybrid",
+      executionTimeMs: 12,
+    },
+  ]);
+  const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+
+  const handleSendChatMessage = async (
+    text: string,
+    engineMode?: "spark-zed-llama" | "gemini" | "hybrid"
+  ) => {
+    const userMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: "user",
+      text,
+      timestamp: Date.now(),
+    };
+
+    setChatMessages((prev) => [...prev, userMsg]);
+    setIsChatLoading(true);
+
+    try {
+      const response = await fetch("/api/welfare/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          personaId: activePersona.id,
+          engineMode: engineMode || activePersona.engineType || "hybrid",
+          context: {
+            financialState: INITIAL_FINANCIAL_MODEL,
+            kanbanState: {
+              itemCount: INITIAL_KANBAN_ITEMS.length,
+              stages: INITIAL_KANBAN_ITEMS.map((k) => ({ title: k.title, stage: k.stage, muda: k.mudaType })),
+            },
+            vaultSummary: {
+              fileCount: vaultFiles.length,
+              categories: vaultFiles.map((v) => v.category),
+            },
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chat API responded with ${response.status}`);
+      }
+
+      const data = await response.json();
+      const agentMsg: ChatMessage = {
+        id: `msg-agent-${Date.now()}`,
+        sender: "agent",
+        text: data.reply || data.text || "Directive acknowledged and logged into sovereign command register.",
+        timestamp: Date.now(),
+        reasoning: data.reasoning,
+        avatarMood: data.avatarMood || activePersona.toneTag,
+        engineTelemetry: data.telemetry,
+        engineUsed: data.engineUsed || (engineMode === "spark-zed-llama" ? "Spark • ZED • LLaMA" : "Hybrid Co-Processor"),
+        executionTimeMs: data.executionTimeMs || 48,
+      };
+
+      setChatMessages((prev) => [...prev, agentMsg]);
+    } catch (err: any) {
+      console.error("Chat error:", err);
+      const fallbackAgentMsg: ChatMessage = {
+        id: `msg-agent-${Date.now()}`,
+        sender: "agent",
+        text: `Directive received: "${text.slice(0, 100)}...". 4 Command Pillars synchronized. No outgoing disbursements authorized. Operating in sovereign offline mode.`,
+        timestamp: Date.now(),
+        reasoning: "Local deterministic fallback route engaged.",
+        avatarMood: "Resolute",
+        engineUsed: "Local Fallback",
+        executionTimeMs: 5,
+      };
+      setChatMessages((prev) => [...prev, fallbackAgentMsg]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  // ── Fire-and-forget BigQuery audit log ──────────────────────────────────
+  const logAuditToBigQuery = async (payload: AuditResponse) => {
+    try {
+      await fetch("/api/log-audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      // Silent — BigQuery write failure must never surface to the user
+      console.warn("[log-audit] Non-critical BigQuery write failed:", err);
+    }
+  };
 
   // Handle live URL audit fetch to Express server
   const handleRunAudit = async (inputs: {
@@ -52,6 +170,9 @@ export function App() {
       const data: AuditResponse = await response.json();
       setAuditData(data);
       setActiveTab("deck"); // Default to Executive Slide Deck tab for instant consumable presentation
+
+      // Log audit result to BigQuery (non-blocking)
+      logAuditToBigQuery(data);
     } catch (err: any) {
       console.error("Audit execution error:", err);
       setAuditError("Failed to reach server audit engine. Loaded intelligent fallback analysis.");
@@ -67,7 +188,7 @@ export function App() {
       const monthlyLeak = Math.max(0, optimizedRev - currentRev);
       const annualLeak = monthlyLeak * 12;
 
-      setAuditData({
+      const fallbackData: AuditResponse = {
         ...DEFAULT_BOB_PRESET,
         clientInfo: {
           ...DEFAULT_BOB_PRESET.clientInfo,
@@ -97,8 +218,13 @@ export function App() {
           velocityMultiplier: 3.2,
           projectedScalingOutput: Math.round(optimizedRev * 12),
         },
-      });
+      };
+
+      setAuditData(fallbackData);
       setActiveTab("deck");
+
+      // Log fallback audit to BigQuery (non-blocking)
+      logAuditToBigQuery(fallbackData);
     } finally {
       setIsLoading(false);
     }
@@ -309,6 +435,28 @@ export function App() {
           </div>
         )}
 
+        {/* Tab 3.5: COBRA Competitor Map Capture & Trojan Displacement */}
+        {activeTab === "cobra" && (
+          <div className="animate-fadeIn">
+            <CobraTrojanDeck
+              clientName={auditData.clientInfo.clientName}
+              domain={auditData.clientInfo.targetDomain}
+              niche={auditData.clientInfo.niche}
+              location={auditData.clientInfo.location}
+            />
+          </div>
+        )}
+
+        {/* Tab 3.7: Dispatch Shield Commercial Settlement Vehicle ($550 setup + $150/mo) */}
+        {activeTab === "shield" && (
+          <div className="animate-fadeIn">
+            <CommercialSettlementVehicle
+              clientName={auditData.clientInfo.clientName}
+              domain={auditData.clientInfo.targetDomain}
+            />
+          </div>
+        )}
+
         {/* Tab 4: Gladiator Protocol Proposal */}
         {activeTab === "proposal" && (
           <div className="animate-fadeIn">
@@ -355,6 +503,20 @@ export function App() {
           </div>
         )}
 
+        {/* Tab 8B: Autonomous Social Operating Fleet */}
+        {activeTab === "social-fleet" && (
+          <div className="animate-fadeIn">
+            <SocialAgentConsole />
+          </div>
+        )}
+
+        {/* Command Console: Manus + Social voice chat and RCS queue */}
+        {activeTab === "command" && (
+          <div className="animate-fadeIn">
+            <CommandConsole />
+          </div>
+        )}
+
         {/* Tab 9: Google Workspace Hub (Docs / Slides / Drive / Picker) */}
         {activeTab === "workspace" && (
           <div className="animate-fadeIn">
@@ -373,6 +535,30 @@ export function App() {
         {activeTab === "gateway" && (
           <div className="animate-fadeIn">
             <IgnitusCoreGateway onEnterApplet={() => setActiveTab("audit")} />
+          </div>
+        )}
+
+        {/* Tab 12: Agent SHAH / ZED Chat */}
+        {activeTab === "chat" && (
+          <div className="animate-fadeIn">
+            <AgentChat
+              activePersona={activePersona}
+              messages={chatMessages}
+              onSendMessage={handleSendChatMessage}
+              isLoading={isChatLoading}
+              vaultFiles={vaultFiles}
+              latestCheckIn={INITIAL_CHECKINS[0]}
+              kanbanItems={INITIAL_KANBAN_ITEMS}
+              financialModel={INITIAL_FINANCIAL_MODEL}
+              dmaicProjects={INITIAL_DMAIC_PROJECTS}
+            />
+          </div>
+        )}
+
+        {/* Tab 13: ZED Core Coder & Delta Multiplayer Environment */}
+        {activeTab === "zed" && (
+          <div className="animate-fadeIn">
+            <ZedEditorDeck />
           </div>
         )}
       </main>

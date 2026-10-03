@@ -2,11 +2,47 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ignitus Core — Gladiator Protocol Sales Engine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="theme-color" content="#12151a" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="Ignitus Core — Agent-Openable Digital Front-Door, 60s Speed-to-Scope Scoping Engine, and Sub-60s Twilio Cell Dispatch for Contractors." />
+
+    <!-- WebMCP: Agent-Openable Digital Front-Door Discovery -->
+    <link rel="webmcp" type="application/json" href="/.well-known/webmcp.json" />
+    <link rel="alternate" type="application/json+webmcp" href="/webmcp.json" title="WebMCP Tools" />
+
+    <title>Ignitus Core — Agent-Openable Front-Door & Gladiator Protocol</title>
+
+    <!-- JSON-LD Action Schema for AI Crawlers (Gemini in Chrome, Claude, Perplexity) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HomeAndConstructionBusiness",
+      "name": "Ignitus Core Solutions",
+      "description": "Agent-Openable commercial contractor scoping, instant 60s estimates, and sub-60s SMS dispatch.",
+      "potentialAction": [
+        {
+          "@type": "QuoteAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "/api/webmcp/execute?tool=instantScopeEstimate",
+            "actionPlatform": ["http://schema.org/DesktopWebPlatform", "http://schema.org/MobileWebPlatform"]
+          },
+          "result": "EstimatedScopeContract"
+        },
+        {
+          "@type": "CommunicateAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "/api/webmcp/execute?tool=requestEmergencyDispatch"
+          }
+        }
+      ]
+    }
+    </script>
     <script src="https://apis.google.com/js/api.js" async defer></script>
   </head>
-  <body>
+  <body class="bg-[#0e1116] text-gray-100 antialiased selection:bg-red-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

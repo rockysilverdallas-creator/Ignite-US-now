@@ -1,0 +1,30 @@
+[
+  {
+    "label": "Start Dev Server (ZED Fast Loop)",
+    "command": "npm run dev",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "Build Application & Serverless Bundle",
+    "command": "npm run build",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "Typecheck & Lint (Zero Regression Check)",
+    "command": "npm run lint",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": false,
+    "reveal": "always"
+  },
+  {
+    "label": "Inspect Spark-ZED Live Telemetry",
+    "command": "node -e \"fetch('http://localhost:3001/api/engine/spark-zed-llama/telemetry').then(r=>r.json()).then(d=>console.log(JSON.stringify(d, null, 2))).catch(e=>console.error('Server offline or starting:', e.message))\"",
+    "use_new_terminal": false,
+    "allow_concurrent_runs": true,
+    "reveal": "always"
+  }
+]

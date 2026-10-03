@@ -1,0 +1,50 @@
+{
+  "webmcpVersion": "1.0.0",
+  "organization": "Ignitus Core Solutions",
+  "protocol": "IGNITUS_GLADIATOR_FRONTDOOR",
+  "description": "Agent-Openable front-door for contractor trade scoping, instant estimates, speed-to-lead cell dispatch, and emergency triage.",
+  "contactEndpoint": "/api/webmcp/execute",
+  "tollFreeVoiceHook": "/api/twilio?action=voice",
+  "tools": [
+    {
+      "name": "instantScopeEstimate",
+      "description": "Generates an instant 60-second contractor price estimate, calculating market benchmark and potential unoptimized leak.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tradeNiche": { "type": "string", "default": "General Contracting" },
+          "squareFootageOrUnits": { "type": "number", "default": 2500 },
+          "tier": { "type": "string", "enum": ["Standard", "Premium", "Commercial Heavy-Duty"], "default": "Premium" },
+          "zipCode": { "type": "string", "default": "75201" }
+        },
+        "required": ["tradeNiche"]
+      }
+    },
+    {
+      "name": "requestEmergencyDispatch",
+      "description": "Instantly flags emergency storm damage, burst pipes, fallen trees, or urgent structural repairs for sub-60s SMS crew dispatch.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "callerPhone": { "type": "string" },
+          "propertyAddress": { "type": "string" },
+          "emergencyType": { "type": "string" },
+          "urgencyLevel": { "type": "string", "enum": ["CRITICAL_IMMEDIATE", "SAME_DAY", "24_HOUR"], "default": "CRITICAL_IMMEDIATE" }
+        },
+        "required": ["callerPhone", "emergencyType"]
+      }
+    },
+    {
+      "name": "checkContractorAvailability",
+      "description": "Checks live calendar and dispatch availability for trade specialists in the DFW metro and regional corridors.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "trade": { "type": "string" },
+          "metroArea": { "type": "string", "default": "Dallas" }
+        },
+        "required": ["trade"]
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldAlert, Presentation, Sparkles, RefreshCw, Layers, Monitor, HardDrive, FileText, Video, Rss, MessageSquare, Activity, Globe } from "lucide-react";
+import { ShieldAlert, Presentation, Sparkles, RefreshCw, Layers, Monitor, HardDrive, FileText, Video, Rss, MessageSquare, Activity, Globe, Bot, Zap, Code, Crosshair, ShieldCheck, Share2 } from "lucide-react";
 
 interface NavbarProps {
   clientName: string;
@@ -132,6 +132,30 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab("cobra")}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
+              activeTab === "cobra"
+                ? "bg-rose-500/20 text-rose-300 border border-rose-500/50 font-bold shadow-md shadow-rose-950/40"
+                : "text-rose-400 hover:text-white hover:bg-[#1a1f26] border border-rose-500/20"
+            }`}
+          >
+            <Crosshair className="w-3.5 h-3.5 text-rose-400" />
+            <span>COBRA Trojan Strike</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("shield")}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
+              activeTab === "shield"
+                ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold shadow-md shadow-emerald-950/40"
+                : "text-emerald-400 hover:text-white hover:bg-[#1a1f26] border border-emerald-500/20"
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Dispatch Shield ($550 / $5 a day)</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("proposal")}
             className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
               activeTab === "proposal"
@@ -192,6 +216,30 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab("social-fleet")}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
+              activeTab === "social-fleet"
+                ? "bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/50 font-bold shadow-md shadow-cyan-950/40"
+                : "text-cyan-400 hover:text-white hover:bg-[#1a1f26] border border-cyan-500/20"
+            }`}
+          >
+            <Share2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Social Fleet Agents</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("command")}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
+              activeTab === "command"
+                ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-300 border border-emerald-500/50 font-bold shadow-md shadow-emerald-950/40"
+                : "text-emerald-400 hover:text-white hover:bg-[#1a1f26] border border-emerald-500/20"
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Command: Voice Chat + RCS</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("workspace")}
             className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
               activeTab === "workspace"
@@ -225,6 +273,30 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Globe className="w-3.5 h-3.5" />
             <span>Ignitus Core (Live Gateway)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("chat")}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
+              activeTab === "chat"
+                ? "bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-indigo-500/20 text-cyan-300 border border-cyan-500/40 font-bold shadow-md shadow-cyan-900/30"
+                : "text-cyan-400 hover:text-white hover:bg-[#1a1f26] border border-cyan-500/20"
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5" />
+            <span>Agent SHAH / ZED Chat</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("zed")}
+            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap transition-all ${
+              activeTab === "zed"
+                ? "bg-gradient-to-r from-blue-600/30 to-cyan-600/30 text-cyan-300 border border-cyan-400/50 font-bold shadow-md shadow-cyan-900/30"
+                : "text-neutral-400 hover:text-white hover:bg-[#1a1f26] border border-neutral-700/50"
+            }`}
+          >
+            <Code className="w-3.5 h-3.5 text-cyan-400" />
+            <span>ZED Editor (Delta)</span>
           </button>
         </div>
       </div>
