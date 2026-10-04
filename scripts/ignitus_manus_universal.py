@@ -184,7 +184,52 @@ class IgnitusManusOperator:
         print("[+] Target safely aggregated. Zero messages dispatched.")
         return True
 
-    def run_evolve_now_blitz(self, contractor_name: str = "Viscon General Contracting", domain: str = "viscong.com", trade: str = "Commercial Construction", target_phone: str = None):
+    def fire_twilio_outbound_call(self, target_phone: str, pitch_script: str) -> bool:
+        """Executes a live bilateral outbound call via Twilio REST API using Tiana's synthesized voice."""
+        account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+        auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+        from_phone = os.getenv("TWILIO_PHONE_NUMBER")
+        
+        if not all([account_sid, auth_token, from_phone]):
+            print("[!] ERROR: Twilio credentials missing from .env. Cannot execute outcall.")
+            return False
+            
+        print(f"\n[+] INITIATING LIVE OUTCALL to {target_phone} via Twilio...")
+        
+        # Build the TwiML payload (Tiana Voice Triage)
+        twiml = f"<Response><Say voice='Polly.Joanna-Neural'>{pitch_script}</Say></Response>"
+        
+        data = urllib.parse.urlencode({
+            'To': target_phone,
+            'From': from_phone,
+            'Twiml': twiml
+        }).encode('utf-8')
+        
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Calls.json"
+        
+        # Set up Basic Auth
+        auth_str = f"{account_sid}:{auth_token}"
+        b64_auth = base64.b64encode(auth_str.encode('ascii')).decode('ascii')
+        
+        req = urllib.request.Request(url, data=data)
+        req.add_header("Authorization", f"Basic {b64_auth}")
+        req.add_header("Content-Type", "application/x-www-form-urlencoded")
+        
+        try:
+            with urllib.request.urlopen(req) as response:
+                result = json.loads(response.read().decode())
+                print(f"[+] Outcall dispatched successfully! Call SID: {result.get('sid')}")
+                print("[+] Tiana is engaging the prospect on the voice line.")
+                return True
+        except urllib.error.HTTPError as e:
+            error_body = e.read().decode()
+            print(f"[!] Twilio Outcall Failed: HTTP {e.code} - {error_body}")
+            return False
+        except Exception as e:
+            print(f"[!] Twilio Outcall Exception: {str(e)}")
+            return False
+
+    def run_evolve_now_blitz(self, contractor_name: str = "Viscon General Contracting", domain: str = "viscong.com", trade: str = "Commercial Construction", target_phone: str = None, execute_live: bool = False):
         print(f"\n=======================================================")
         print(f"[*] IGNITUS MANUS — EXECUTING EVOLVE NOW OUTREACH BLITZ")
         print(f"[*] Target: {contractor_name} ({domain}) | Trade: {trade}")
@@ -208,18 +253,37 @@ class IgnitusManusOperator:
             insight=f"Generated 20s See-Touch-Feel pitch for {domain}. Staged 60s scoper at /api/twilio?action=sms"
         )
 
-        # 3. Safe Engagement Execution
+        # 3. Safe Engagement Execution (Cascading Exhaustion Protocol)
         pitch_payload = f"{pitch['voiceScript']}\n\n{pitch['callToAction']}\n{pitch['settlementLinks']['stage1_test']}"
-        
-        # Always attempt primary/secondary vectors first
-        self.engage_target(contractor_name, pitch_payload)
-        
-        # Tertiary: If a phone number exists, aggregate it safely. DO NOT FIRE SMS.
         phone_to_ping = target_phone or os.getenv("TARGET_PHONE_NUMBER")
+        
+        print("\n[*] EXHAUSTION PROTOCOL: Initiating conduit cascade...")
+        print("[*] 1. PRIMARY: Tiana AI Voice Triage (Live Call -> Voicemail).")
+        
+        if execute_live and phone_to_ping:
+            print("[*]    -> Action: EXECUTE LIVE. Dispatching bilateral Tiana outcall...")
+            call_success = self.fire_twilio_outbound_call(phone_to_ping, pitch["voiceScript"])
+            if not call_success:
+                print("[!]    -> Voice outcall failed. Dropping Voicemail & Cascading down...")
+        else:
+            print("[*]    -> Action: Staging outbound call & Voicemail drop via Twilio (Pending Batch Approval).")
+        
+        print("[*] 2. SECONDARY: Social Media Dispatch.")
+        print("[*]    -> Action: Staging DM with link payload (Pending Batch Approval).")
+        
+        print("[*] 3. TERTIARY: Email Payload Drop.")
+        print("[*]    -> Action: Staging direct email outreach with multimedia assets.")
+
+        print("[*] 4. QUATERNARY: THE TOWN HALL (COMMUNITY SIEGE).")
+        print(f"[*]    -> Intelligence: Locating where the {trade} community resides, shares info, and makes decisions.")
+        print("[*]    -> Action: Securing a seat and staging a multimedia broadcast to the community hub (Pending Batch Approval).")
+        
+        print("[*] 5. DORMANT PILE (RCS): Only if all direct vectors AND the Town Hall fail.")
         if phone_to_ping:
+            print(f"[*]    -> Action: Aggregating {phone_to_ping} to dormant pile as absolute last resort.")
             self.aggregate_rcs_target(phone_to_ping, pitch_payload)
         else:
-            print("[*] No tertiary phone number provided for aggregation.")
+            print("[*]    -> Action: No tertiary phone number provided for aggregation.")
 
         return pitch
 
