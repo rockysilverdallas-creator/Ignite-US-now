@@ -1,0 +1,17 @@
+{
+  "name": "Ignitus Core",
+  "short_name": "Ignitus",
+  "description": "Agent-Openable Digital Front-Door and Scoping Engine",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e1116",
+  "theme_color": "#12151a",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

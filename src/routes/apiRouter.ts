@@ -743,6 +743,7 @@ interface TwilioTelemetryEntry {
 const twilioTelemetryLog: TwilioTelemetryEntry[] = [];
 const TOLL_FREE_LINE = "(833) 345-4785";
 const TOLL_FREE_E164 = "+18333454785";
+const FORWARDING_E164 = "+19453650325";
 
 // ── Twilio Webhook Dispatcher (Voice, SMS, Status, Screen, Fallback) ───────
 const handleTwilioDispatcher = (req: Request, res: Response) => {
@@ -916,7 +917,7 @@ const handleTwilioDispatcher = (req: Request, res: Response) => {
   <Pause length="1"/>
   <Say voice="Polly.Danielle-Neural">Please hold while we route you to an active field commander, or hang up to receive your scope breakdown by text.</Say>
   <Dial timeout="20" action="/api/twilio?action=status">
-    <Number url="/api/twilio?action=screen">${TOLL_FREE_E164}</Number>
+    <Number url="/api/twilio?action=screen">${FORWARDING_E164}</Number>
   </Dial>
   <Say voice="Polly.Danielle-Neural">All field commanders are currently on active triage. Your scope has been flagged as high priority. Expect an SMS update within sixty seconds. Goodbye.</Say>
   <Hangup/>

@@ -12,7 +12,6 @@
   "serviceLines": {
     "ROOFING": {
       "trade": "Commercial & Storm Roofing",
-      "sampleSiteDnaTemplate": "SAMPLE_ROOFING_STRIKE_SITE",
       "targets": [
         { "id": "ROOF-01", "name": "Texas Star Roofing", "city": "Plano", "state": "TX", "domain": "texasstarroofing.com", "ladderEntry": "STAGE_2", "strikeDna": "Texas Star Commercial & Storm Scoper" },
         { "id": "ROOF-02", "name": "Stonemark Roofing & Construction", "city": "McKinney", "state": "TX", "domain": "stonemarkroofing.com", "ladderEntry": "STAGE_2", "strikeDna": "Stonemark Collin County Hail Defense" },
@@ -38,7 +37,6 @@
     },
     "HVAC": {
       "trade": "HVAC & Mechanical Air Systems",
-      "sampleSiteDnaTemplate": "SAMPLE_HVAC_STRIKE_SITE",
       "targets": [
         { "id": "HVAC-01", "name": "Air Repair Pros", "city": "McKinney", "state": "TX", "domain": "airrepairpros.com", "ladderEntry": "STAGE_2", "strikeDna": "Air Repair Pros 24/7 Heatwave Dispatch" },
         { "id": "HVAC-02", "name": "Total Air & Heat", "city": "Plano", "state": "TX", "domain": "totalair.com", "ladderEntry": "STAGE_2", "strikeDna": "Total Air Plano Compressor Triage" },
@@ -64,7 +62,6 @@
     },
     "PLUMBING_RESTORATION": {
       "trade": "Plumbing & 24/7 Water Restoration",
-      "sampleSiteDnaTemplate": "SAMPLE_PLUMBING_STRIKE_SITE",
       "targets": [
         { "id": "PLUMB-01", "name": "Hackler Plumbing", "city": "McKinney", "state": "TX", "domain": "hacklerplumbing.com", "ladderEntry": "STAGE_1", "strikeDna": "Hackler McKinney Slab Leak Rapid Radar" },
         { "id": "PLUMB-02", "name": "O'Bryan Plumbing Services", "city": "Plano", "state": "TX", "domain": "obryanplumbing.com", "ladderEntry": "STAGE_2", "strikeDna": "O'Bryan Plano Water Heater Triage Portal" },
@@ -90,7 +87,6 @@
     },
     "CONCRETE_CONSTRUCTION": {
       "trade": "Concrete, Foundation & General Construction",
-      "sampleSiteDnaTemplate": "SAMPLE_CONCRETE_STRIKE_SITE",
       "targets": [
         { "id": "CONC-01", "name": "Viscon General Contracting", "city": "Dallas", "state": "TX", "domain": "viscong.com", "ladderEntry": "STAGE_4", "strikeDna": "Viscon Commercial General Contracting Portal" },
         { "id": "CONC-02", "name": "Apex Concrete Services", "city": "Dallas", "state": "TX", "domain": "apexconcretedallas.com", "ladderEntry": "STAGE_2", "strikeDna": "Apex DFW Paving & Flatwork Scoper" },
@@ -116,7 +112,6 @@
     },
     "TREE_ARBORIST": {
       "trade": "Tree Surgery, Heavy Arborist & Storm Clearing",
-      "sampleSiteDnaTemplate": "SAMPLE_TREE_STRIKE_SITE",
       "targets": [
         { "id": "TREE-01", "name": "Tree Masters McKinney", "city": "McKinney", "state": "TX", "domain": "treemastersmckinney.com", "ladderEntry": "STAGE_1", "strikeDna": "Tree Masters McKinney Storm Damage Scoper" },
         { "id": "TREE-02", "name": "Plano Tree Care Pros", "city": "Plano", "state": "TX", "domain": "planotreecare.com", "ladderEntry": "STAGE_2", "strikeDna": "Plano Oak Wilt & Crane Removal Shield" },

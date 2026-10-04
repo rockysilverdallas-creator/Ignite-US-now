@@ -40,6 +40,7 @@ if (WIF_PROVIDER && process.env.VERCEL_OIDC_TOKEN) {
 }
 
 import { apiRouter } from "./src/routes/apiRouter";
+import { socialAuthRouter } from "./src/routes/socialAuthRouter";
 import { WebMCPService } from "./src/services/webMcpService";
 
 const app = express();
@@ -48,6 +49,7 @@ const PORT = 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/api", apiRouter);
+app.use("/api/social", socialAuthRouter);
 
 // WebMCP Discovery Endpoints for External Agents (Gemini in Chrome, Claude, Perplexity)
 app.get(["/.well-known/webmcp.json", "/webmcp.json"], (req, res) => {

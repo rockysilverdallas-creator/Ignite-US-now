@@ -1,0 +1,36 @@
+{
+  "agent_id": "ignitus-manus-universal",
+  "created_at": 1791066113.9036062,
+  "learned_insights": [
+    {
+      "timestamp": 1791066113.9036062,
+      "topic": "OUTREACH_ADMIN",
+      "insight": "Generated 20s See-Touch-Feel pitch for ignitus.com. Staged 60s scoper at /api/twilio?action=sms"
+    },
+    {
+      "timestamp": 1791066206.77181,
+      "topic": "OUTREACH_SAM_KENDRICK",
+      "insight": "Generated 20s See-Touch-Feel pitch for samkendrick.com. Staged 60s scoper at /api/twilio?action=sms"
+    },
+    {
+      "timestamp": 1791079984.8442235,
+      "topic": "OUTREACH_VISCON_GENERAL_CONTRACTING",
+      "insight": "Generated 20s See-Touch-Feel pitch for viscong.com. Staged 60s scoper at /api/twilio?action=sms"
+    },
+    {
+      "timestamp": 1791080019.912965,
+      "topic": "OUTREACH_VISCON_GENERAL_CONTRACTING",
+      "insight": "Generated 20s See-Touch-Feel pitch for viscong.com. Staged 60s scoper at /api/twilio?action=sms"
+    },
+    {
+      "timestamp": 1791081828.853203,
+      "topic": "OUTREACH_VISCON_GENERAL_CONTRACTING",
+      "insight": "Generated 20s See-Touch-Feel pitch for viscong.com. Staged 60s scoper at /api/twilio?action=sms"
+    }
+  ],
+  "audited_contractors": {},
+  "active_campaigns": [
+    "EVOLVE_NOW_BLITZ"
+  ],
+  "toll_free_line": "(833) 345-4785"
+}
