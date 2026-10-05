@@ -22,6 +22,114 @@ apiRouter.use(express.json({ limit: "25mb" }));
 apiRouter.use(express.urlencoded({ extended: true, limit: "25mb" }));
 apiRouter.use("/command", commandRouter);
 
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { initializeApp, getApps } from "firebase-admin/app";
+
+// Initialize Firebase Admin if not already initialized
+if (!getApps().length) {
+  try {
+    initializeApp({
+      projectId: "ignitus-d1e7b",
+    });
+  } catch (e) {
+    console.warn("Firebase Admin init failed:", e);
+  }
+}
+
+// Spark-Gemma Mesh Architecture
+apiRouter.post("/spark_gemma", async (req: Request, res: Response) => {
+  try {
+    const { message, sessionId = "default-session" } = req.body;
+    
+    // 1. Gemma queries SHAer's Firestore memory
+    let memoryContext = "";
+    const db = getFirestore();
+    const docRef = db.collection("swarm_intelligence").doc(sessionId);
+    const docSnap = await docRef.get();
+    
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      memoryContext = data?.history ? data.history.slice(-5).map((m: any) => `${m.role}: ${m.content}`).join("\n") : "";
+    }
+
+    // 2. Hydrate Spark with real-time state & execute
+    const sparkContext = `[REAL-TIME CLOUD MESH HYDRATION]\n${memoryContext}\n[END HYDRATION]\n\n`;
+    
+    // Execute Spark logic (simulated or actual if connected)
+    const { generateIntelligentDirectReply } = await import("../services/intelligentResponse");
+    
+    const intelligentResult = generateIntelligentDirectReply(
+      sparkContext + "You are Spark. Gemma has hydrated you with the latest state. Reason, strategize, and issue dispatch commands.\nUser Message: " + message, 
+      {
+        avatarPersona: "Spark Executive Node & Gemma Tactical Edge"
+      }
+    );
+
+    // 3. Spark commands -> Gemma dispatches -> SHAer persists to cloud mesh
+    const newEntry = {
+      timestamp: new Date().toISOString(),
+      role: "user",
+      content: message
+    };
+    
+    const aiEntry = {
+      timestamp: new Date().toISOString(),
+      role: "assistant",
+      content: intelligentResult.reply
+    };
+
+    await docRef.set({
+      history: FieldValue.arrayUnion(newEntry, aiEntry),
+      lastUpdated: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    res.json({
+      success: true,
+      role: "SPARK_GEMMA_MESH",
+      reply: intelligentResult.reply,
+      telemetry: {
+        latency: "ZERO",
+        persistedTo: "ignitus-d1e7b/swarm_intelligence"
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error?.message });
+  }
+});
+
+// Ignitus Manus Autonomous Engine Route
+apiRouter.post("/ignitus_manus/execute", async (req: Request, res: Response) => {
+  try {
+    const { directive, target, budget } = req.body;
+    
+    // Log the execution to the ledger
+    const db = getFirestore();
+    const ledgerRef = db.collection("manus_ledger").doc();
+    
+    await ledgerRef.set({
+      timestamp: FieldValue.serverTimestamp(),
+      directive: directive || "Execute Kinetic Cash Harvesting",
+      target: target || "General Internet Trend Arbitrage",
+      status: "EXECUTING",
+      budget: budget || 0
+    });
+
+    res.json({
+      success: true,
+      role: "IGNITUS_MANUS",
+      message: "Manus Swarm has received the directive and is initiating the harvest.",
+      ledgerId: ledgerRef.id,
+      telemetry: {
+        status: "ACTIVE",
+        activeNodes: ["Pathfinder", "Navigator", "Registrar", "Keeper", "Ledger"]
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error?.message });
+  }
+});
+
 // 0. Spark • ZED • LLaMA Triad Engine Dedicated Endpoints
 apiRouter.get("/engine/zed/readiness", (_req: Request, res: Response) => {
   try {
@@ -746,7 +854,7 @@ const TOLL_FREE_E164 = "+18333454785";
 const FORWARDING_E164 = "+19453650325";
 
 // ── Twilio Webhook Dispatcher (Voice, SMS, Status, Screen, Fallback) ───────
-const handleTwilioDispatcher = (req: Request, res: Response) => {
+const handleTwilioDispatcher = async (req: Request, res: Response) => {
   // Extract action from query, body, subpath, or AUTO-DETECT from Twilio's payload
   let action = (req.query.action as string) || (req.body?.action as string);
   if (!action) {
@@ -913,13 +1021,13 @@ const handleTwilioDispatcher = (req: Request, res: Response) => {
     res.type("text/xml");
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Danielle-Neural">Thank you. Tiana has captured your project inquiry: "${safeInput}". Our sub-sixty-second triage team has logged your dispatch ticket and an SMS confirmation is being sent directly to your phone.</Say>
+  <Say voice="Polly.Danielle-Neural"><prosody volume="x-loud">Thank you. Tiana has captured your project inquiry: "${safeInput}". Our sub-sixty-second triage team has logged your dispatch ticket and an SMS confirmation is being sent directly to your phone.</prosody></Say>
   <Pause length="1"/>
-  <Say voice="Polly.Danielle-Neural">Please hold while we route you to an active field commander, or hang up to receive your scope breakdown by text.</Say>
+  <Say voice="Polly.Danielle-Neural"><prosody volume="x-loud">Please hold while we route you to an active field commander, or hang up to receive your scope breakdown by text.</prosody></Say>
   <Dial timeout="20" action="/api/twilio?action=status">
     <Number url="/api/twilio?action=screen">${FORWARDING_E164}</Number>
   </Dial>
-  <Say voice="Polly.Danielle-Neural">All field commanders are currently on active triage. Your scope has been flagged as high priority. Expect an SMS update within sixty seconds. Goodbye.</Say>
+  <Say voice="Polly.Danielle-Neural"><prosody volume="x-loud">All field commanders are currently on active triage. Your scope has been flagged as high priority. Expect an SMS update within sixty seconds. Goodbye.</prosody></Say>
   <Hangup/>
 </Response>`;
     return res.send(twiml);
@@ -970,6 +1078,20 @@ const handleTwilioDispatcher = (req: Request, res: Response) => {
     return res.send(twiml);
   }
 
+  // Helper for XML escaping
+  const escapeXml = (unsafe: string) => {
+    return unsafe.replace(/[<>&'"]/g, (c) => {
+      switch (c) {
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '&': return '&amp;';
+        case "'": return '&apos;';
+        case '"': return '&quot;';
+        default: return c;
+      }
+    });
+  };
+
   // 8. Default: Inbound Voice Welcome on Toll-Free Line (833) 345-4785
   twilioTelemetryLog.unshift({
     id: `vc-${Date.now()}`,
@@ -980,18 +1102,49 @@ const handleTwilioDispatcher = (req: Request, res: Response) => {
     callSid: callSid ? String(callSid) : undefined,
   });
 
-  const safeCaller = String(caller).replace(/[<>&"]/g, "");
   res.type("text/xml");
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+
+  if (speechResult || digits) {
+    // This is an ongoing conversation
+    const rawInput = speechResult || digits || "Emergency Dispatch";
+    const safeInput = String(rawInput); // Gemini handles raw input safely
+    
+    try {
+      const { generateIntelligentDirectReply } = await import("../services/intelligentResponse");
+      const intelligentResult = generateIntelligentDirectReply(safeInput, {
+        avatarPersona: "Tiana (Polly.Danielle-Neural) Voice Operations Concierge"
+      });
+      
+      const escapedAiResponse = escapeXml(intelligentResult.reply);
+      
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Danielle-Neural">Hello! Thank you for calling Ignitus Core Operations on toll-free line 833-345-4785. I am Tiana, your front-line voice agent. Triage is active for caller ${safeCaller}.</Say>
-  <Gather input="speech dtmf" action="/api/twilio?action=voice-gather" method="POST" timeout="6" speechTimeout="auto">
-    <Say voice="Polly.Danielle-Neural">Please state your trade scope, project details, or emergency request after the tone.</Say>
-  </Gather>
-  <Say voice="Polly.Danielle-Neural">We did not catch your response. Please call back at 833-345-4785 or reply to our direct text message. Goodbye.</Say>
+  <Say voice="Polly.Danielle-Neural"><prosody volume="x-loud">${escapedAiResponse}</prosody></Say>
+  <Gather input="speech dtmf" action="/api/twilio?action=voice" method="POST" timeout="15" speechTimeout="4"></Gather>
+  <Say voice="Polly.Danielle-Neural"><prosody volume="x-loud">We did not catch your response. Please call back at 833-345-4785. Goodbye.</prosody></Say>
   <Hangup/>
 </Response>`;
-  return res.send(twiml);
+      return res.send(twiml);
+    } catch (e) {
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Danielle-Neural"><prosody volume="x-loud">I'm sorry, I experienced a cognitive dropout. Please state your request again.</prosody></Say>
+  <Gather input="speech dtmf" action="/api/twilio?action=voice" method="POST" timeout="15" speechTimeout="4"></Gather>
+</Response>`;
+      return res.send(twiml);
+    }
+  } else {
+    // Initial greeting
+    const safeCaller = escapeXml(String(caller));
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Danielle-Neural"><prosody volume="x-loud">Hello! Thank you for calling Ignitus Core Operations on toll-free line 833-345-4785. I am Tiana, your front-line voice agent. Triage is active for caller ${safeCaller}. Please state your trade scope, project details, or emergency request after the tone.</prosody></Say>
+  <Gather input="speech dtmf" action="/api/twilio?action=voice" method="POST" timeout="15" speechTimeout="4"></Gather>
+  <Say voice="Polly.Danielle-Neural"><prosody volume="x-loud">We did not catch your response. Please call back at 833-345-4785 or reply to our direct text message. Goodbye.</prosody></Say>
+  <Hangup/>
+</Response>`;
+    return res.send(twiml);
+  }
 };
 
 // Route all Twilio patterns: /twilio, /twilio/:subaction, and legacy aliases

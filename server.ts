@@ -1,433 +1,98 @@
-import "dotenv/config";
-import express from "express";
-import path from "path";
-import { GoogleGenAI, Type } from "@google/genai";
-import { BigQuery } from "@google-cloud/bigquery";
-import { ExternalAccountClient } from "google-auth-library";
+import express from 'express';
+import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
+import dotenv from 'dotenv';
 
-// ── BigQuery client (Workload Identity Federation — no JSON key) ──────────
-const GCP_PROJECT_ID = process.env.GCP_PROJECT_ID || "ignitus-d1e7b";
-const WIF_PROVIDER   = process.env.GCP_WORKLOAD_IDENTITY_PROVIDER || "";
-const SA_EMAIL       = process.env.GCP_SERVICE_ACCOUNT_EMAIL || "ignitus-shaer-sa@ignitus-d1e7b.iam.gserviceaccount.com";
-
-import { writeFileSync } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
-
-let bq: BigQuery;
-if (WIF_PROVIDER && process.env.VERCEL_OIDC_TOKEN) {
-  // Vercel injects VERCEL_OIDC_TOKEN per-request as an env var.
-  // Write it to a temp file so ExternalAccountClient.fromJSON can read it.
-  const tokenFile = join(tmpdir(), `vercel-oidc-${Date.now()}.txt`);
-  writeFileSync(tokenFile, process.env.VERCEL_OIDC_TOKEN, "utf8");
-
-  const authClient = ExternalAccountClient.fromJSON({
-    type: "external_account",
-    audience: `//iam.googleapis.com/${WIF_PROVIDER}`,
-    subject_token_type: "urn:ietf:params:oauth:token-type:id_token",
-    token_url: "https://sts.googleapis.com/v1/token",
-    service_account_impersonation_url:
-      `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${SA_EMAIL}:generateAccessToken`,
-    credential_source: {
-      file: tokenFile,
-      format: { type: "text" },
-    },
-  }) as any;
-  bq = new BigQuery({ projectId: GCP_PROJECT_ID, authClient });
-} else {
-  // Local dev — falls back to ADC (gcloud auth application-default login)
-  bq = new BigQuery({ projectId: GCP_PROJECT_ID });
-}
-
-import { apiRouter } from "./src/routes/apiRouter";
-import { socialAuthRouter } from "./src/routes/socialAuthRouter";
-import { WebMCPService } from "./src/services/webMcpService";
+dotenv.config();
 
 const app = express();
-const PORT = 3000;
-
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use("/api", apiRouter);
-app.use("/api/social", socialAuthRouter);
+app.use(express.json());
 
-// WebMCP Discovery Endpoints for External Agents (Gemini in Chrome, Claude, Perplexity)
-app.get(["/.well-known/webmcp.json", "/webmcp.json"], (req, res) => {
-  const protocol = req.headers["x-forwarded-proto"] || "http";
-  const host = req.headers.host || "localhost:3000";
-  res.json(WebMCPService.getManifest(`${protocol}://${host}`));
+const anthropic = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Initialize Gemini SDK with telemetry header
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
+const grok = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: 'https://api.x.ai/v1',
 });
 
-// Clean and sanitize incoming domain URLs (strips tracking query strings like ?fbclid=...)
-function cleanUrl(rawUrl: string): { cleanDomain: string; rawUrlScrubbed: string } {
-  let cleaned = (rawUrl || "").trim();
-  // Remove protocols
-  cleaned = cleaned.replace(/^https?:\/\//i, "");
-  // Remove www.
-  cleaned = cleaned.replace(/^www\./i, "");
-  // Remove query params and hash anchors
-  cleaned = cleaned.split("?")[0].split("#")[0];
-  // Remove trailing slashes
-  cleaned = cleaned.replace(/\/+$/, "");
+const systemPrompt = `You are Tiana, an intelligent, low-latency brand ambassador for Ignitus. 
+You act as a 24/7 Call Guardian for our clients. Keep your responses extremely short, concise, and conversational.
+Use the following lean voicemail/quick touch script to initiate:
+"Hey, this is Tiana, brand ambassador for Ignitus—and potentially the 24/7 Call Guardian for [Company Name]. Our team actually pre-built a modern, redesigned digital front door specifically for [Company Name]."
+When the contractor engages, deploy the matching weapon:
+Weapon 1 (Hear It): "Call our live triage line right now on (833) 345-4785. Say you have a burst pipe or storm leak. Watch how it handles you."
+Weapon 2 (See It): "I can drop your personalized domain link showing your company colors, logo, and local service territory."
+Weapon 3 (Operate It): "I can hand you the standalone interactive leak scoper widget to click and run an estimate."
+Just let me know where I can drop the link—any of your social handles work, or you can just call me back right here on this line. Talk to you soon.`;
 
-  const cleanDomain = cleaned.toLowerCase() || "viscong.com";
-  return {
-    cleanDomain,
-    rawUrlScrubbed: `https://${cleanDomain}`,
-  };
+async function getAiResponse(userMessage: string): Promise<{ text: string, model: string }> {
+    try {
+        console.log('Trying Anthropic...');
+        const response = await anthropic.messages.create({
+            model: "claude-3-5-sonnet-20241022",
+            max_tokens: 150,
+            system: systemPrompt,
+            messages: [{ role: "user", content: userMessage }]
+        });
+        const text = response.content[0].type === 'text' ? response.content[0].text : 'No text';
+        return { text, model: 'Anthropic' };
+    } catch (err) {
+        console.error('Anthropic failed, falling back to Grok:', err);
+        const response = await grok.chat.completions.create({
+            model: "grok-2-latest",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userMessage }
+            ],
+            max_tokens: 150,
+        });
+        return { text: response.choices[0].message.content || 'No text', model: 'Grok' };
+    }
 }
 
-// Calculate revenue leak and efficiency math locally on server
-function calculateLeakMath(jobValue: number, currentLeads: number, closeRatePct: number) {
-  const closeRate = Math.max(0.01, closeRatePct / 100);
-  const optimizedLeads = currentLeads * 2.5;
-  const currentRevenue = currentLeads * closeRate * jobValue;
-  const optimizedRevenue = optimizedLeads * (closeRate * 1.25) * jobValue;
-  const monthlyLeak = Math.max(0, optimizedRevenue - currentRevenue);
-  const annualLeak = monthlyLeak * 12;
+app.all('/api/voice', async (req, res) => {
+    const speechResult = req.body.SpeechResult;
+    
+    let aiText = "Hey, this is Tiana, brand ambassador for Ignitus. How can I help you today?";
+    let modelUsed = "None";
 
-  const efficiencyLiftPct = Math.round(((optimizedRevenue - currentRevenue) / (currentRevenue || 1)) * 100);
-  const velocityMultiplier = 3.2; // 3.2x faster response & lead capture velocity
-  const projectedScalingOutput = Math.round(optimizedRevenue * 12);
-
-  return {
-    currentMonthlyRev: Math.round(currentRevenue),
-    optimizedMonthlyRev: Math.round(optimizedRevenue),
-    monthlyLeak: Math.round(monthlyLeak),
-    annualLeak: Math.round(annualLeak),
-    efficiencyLiftPct: Math.max(120, efficiencyLiftPct),
-    velocityMultiplier,
-    projectedScalingOutput,
-  };
-}
-
-// API Health
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-// Audit Endpoint
-app.post("/api/audit", async (req, res) => {
-  try {
-    const rawInputUrl = req.body.url || "https://viscong.com/";
-    const { cleanDomain } = cleanUrl(rawInputUrl);
-
-    // Inputs are fully optional! If missing or empty, AI automatically projects baseline conditions.
-    let clientName = (req.body.clientName || "").trim();
-    let niche = (req.body.niche || "").trim();
-    let location = (req.body.location || "").trim();
-    let avgJobValue = Number(req.body.avgJobValue) || 0;
-    let currentLeads = Number(req.body.currentLeads) || 0;
-    let closeRate = Number(req.body.closeRate) || 0;
-
-    // Use baseline defaults if no user overrides are provided
-    if (!avgJobValue || avgJobValue <= 0) avgJobValue = 20000;
-    if (!currentLeads || currentLeads <= 0) currentLeads = 45;
-    if (!closeRate || closeRate <= 0) closeRate = 18;
-
-    const mathResults = calculateLeakMath(avgJobValue, currentLeads, closeRate);
-
-    const systemInstruction = `You are the Lead Campaign Orchestrator for Ignitus Core, operating under the Gladiator Protocol.
-Your mission is to perform a deep technical sweep and audit of a client's domain URL: "${cleanDomain}".
-
-CRITICAL INSTRUCTIONS FOR DOMAIN AUDIT:
-1. EXAMINE THE TARGET DOMAIN ("${cleanDomain}") CAREFULLY.
-   - If the domain is "viscong.com", the business is Viscon General Contracting / Viscon Group (Commercial Contracting & Construction).
-   - DEDUCE the exact brand name from the domain string if no client name was explicitly provided by the user. DO NOT use generic placeholder names like "Bob, Concrete & Drywall Contractor" unless the domain literally contains "bobconcrete"!
-   - DEDUCE the actual industry/niche from the domain name (e.g. Commercial Construction, General Contracting, Roofing, HVAC).
-
-2. NO REQUIRED USER METRICS:
-   - The user does NOT need to provide monthly web leads or close rates. You must sweep the domain condition, identify the site's structural gaps (no instant scoping, static contact form, slow mobile layout), and project what percentage increase in efficiency, velocity, and output scaling will look like.
-
-3. PROPOSE A CLINICAL 4-PART GLADIATOR PROPOSAL:
-   1. [THE FRONT DOOR OVERHAUL] - Compare current passive site with high-impact "digital face".
-   2. [THE HOOK: WHAT YOU HAVE vs. WHAT YOU DON'T HAVE] - Explicitly state projected monthly leak ($${mathResults.monthlyLeak.toLocaleString()}/mo), efficiency lift (+${mathResults.efficiencyLiftPct}%), and velocity boost (${mathResults.velocityMultiplier}x).
-   3. [THE WEAPON: WHAT WE GIVE YOU] - Detail AI components: 60s Interactive Scoping, Intent Ingestion (Google MUM), Autonomic Direct-to-SMS CRM Routing.
-   4. [THE RESULT: HOW WE DO IT] - Define 4-step execution: Asset extraction, 72h staging build, owner approval, live deployment.
-
-4. SALES PLAYBOOK:
-   - Provide custom opening hook, single-job value anchoring, objection handlers, closing script, and guarantee terms customized to this specific business brand (${cleanDomain}).`;
-
-    const prompt = `Perform a full Gladiator Protocol Audit & Efficiency Scaling Analysis for:
-Target Domain: ${cleanDomain}
-User Provided Name: ${clientName || "None (Infer from domain " + cleanDomain + ")"}
-User Provided Niche: ${niche || "None (Infer from domain " + cleanDomain + ")"}
-Location context: ${location || "Regional Metro Area"}
-Projected Benchmark Job Value: $${avgJobValue}
-Projected Benchmark Leads: ${currentLeads}/mo
-Projected Close Rate: ${closeRate}%
-Calculated Leak: $${mathResults.monthlyLeak.toLocaleString()}/mo ($${mathResults.annualLeak.toLocaleString()}/yr)`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            clientInfo: {
-              type: Type.OBJECT,
-              properties: {
-                id: { type: Type.STRING },
-                clientName: { type: Type.STRING },
-                targetDomain: { type: Type.STRING },
-                niche: { type: Type.STRING },
-                location: { type: Type.STRING },
-                avgJobValue: { type: Type.NUMBER },
-                currentLeads: { type: Type.NUMBER },
-                closeRate: { type: Type.NUMBER },
-                auditedTechStack: { type: Type.STRING },
-                pageSpeed: { type: Type.STRING },
-                notes: { type: Type.STRING },
-              },
-              required: ["clientName", "targetDomain", "niche", "avgJobValue", "currentLeads", "closeRate"],
-            },
-            technicalDetails: {
-              type: Type.OBJECT,
-              properties: {
-                hosting: { type: Type.STRING },
-                cms: { type: Type.STRING },
-                pixels: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-                mobileSpeedSec: { type: Type.NUMBER },
-                sslSecure: { type: Type.BOOLEAN },
-                touchCtaPresent: { type: Type.BOOLEAN },
-                missedLeadsScore: { type: Type.NUMBER },
-                headlineCopy: { type: Type.STRING },
-                identifiedGaps: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-                competitiveDisadvantages: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-              },
-              required: [
-                "hosting",
-                "cms",
-                "pixels",
-                "mobileSpeedSec",
-                "sslSecure",
-                "touchCtaPresent",
-                "missedLeadsScore",
-                "headlineCopy",
-                "identifiedGaps",
-                "competitiveDisadvantages",
-              ],
-            },
-            proposal: {
-              type: Type.OBJECT,
-              properties: {
-                frontDoorOverhaul: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    currentGravestone: { type: Type.STRING },
-                    ignitusDigitalFace: { type: Type.STRING },
-                    craftsmanshipImpact: { type: Type.STRING },
-                  },
-                  required: ["title", "currentGravestone", "ignitusDigitalFace", "craftsmanshipImpact"],
-                },
-                theHook: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    currentPassiveState: { type: Type.STRING },
-                    ignitusState: { type: Type.STRING },
-                    leakSummaryText: { type: Type.STRING },
-                    monthlyLeakAmount: { type: Type.NUMBER },
-                    annualLeakAmount: { type: Type.NUMBER },
-                  },
-                  required: [
-                    "title",
-                    "currentPassiveState",
-                    "ignitusState",
-                    "leakSummaryText",
-                    "monthlyLeakAmount",
-                    "annualLeakAmount",
-                  ],
-                },
-                theWeapon: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    interactiveScoping: { type: Type.STRING },
-                    intentIngestion: { type: Type.STRING },
-                    autonomicRouting: { type: Type.STRING },
-                  },
-                  required: ["title", "interactiveScoping", "intentIngestion", "autonomicRouting"],
-                },
-                theResult: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    step1AssetExtraction: { type: Type.STRING },
-                    step2StagingBuild: { type: Type.STRING },
-                    step3OwnerApproval: { type: Type.STRING },
-                    step4LiveDeployment: { type: Type.STRING },
-                  },
-                  required: [
-                    "title",
-                    "step1AssetExtraction",
-                    "step2StagingBuild",
-                    "step3OwnerApproval",
-                    "step4LiveDeployment",
-                  ],
-                },
-              },
-              required: ["frontDoorOverhaul", "theHook", "theWeapon", "theResult"],
-            },
-            playbook: {
-              type: Type.OBJECT,
-              properties: {
-                openingHook: { type: Type.STRING },
-                valueAnchoring: { type: Type.STRING },
-                objectionHandlers: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      objection: { type: Type.STRING },
-                      response: { type: Type.STRING },
-                    },
-                    required: ["objection", "response"],
-                  },
-                },
-                closingScript: { type: Type.STRING },
-                guaranteeTerms: { type: Type.STRING },
-              },
-              required: ["openingHook", "valueAnchoring", "objectionHandlers", "closingScript", "guaranteeTerms"],
-            },
-          },
-          required: ["clientInfo", "technicalDetails", "proposal", "playbook"],
-        },
-      },
-    });
-
-    const parsedData = JSON.parse(response.text || "{}");
-
-    // Dynamic extraction: prioritize inferred client name if user didn't specify
-    const finalClientName =
-      clientName ||
-      parsedData.clientInfo?.clientName ||
-      (cleanDomain.includes("viscon") ? "Viscon General Contracting / Viscon Group" : cleanDomain);
-
-    const finalNiche =
-      niche ||
-      parsedData.clientInfo?.niche ||
-      (cleanDomain.includes("viscon") ? "General Commercial Contractor" : "Contractor Operations");
-
-    // Construct final audit payload with strict domain accuracy
-    const resultPayload = {
-      ...parsedData,
-      clientInfo: {
-        ...parsedData.clientInfo,
-        id: `audit-${Date.now()}`,
-        clientName: finalClientName,
-        targetDomain: cleanDomain,
-        niche: finalNiche,
-        avgJobValue: Number(avgJobValue),
-        currentLeads: Number(currentLeads),
-        closeRate: Number(closeRate),
-        autoInferred: !req.body.clientName || !req.body.currentLeads,
-      },
-      proposal: {
-        ...parsedData.proposal,
-        theHook: {
-          ...parsedData.proposal.theHook,
-          monthlyLeakAmount: mathResults.monthlyLeak,
-          annualLeakAmount: mathResults.annualLeak,
-        },
-      },
-      calculatedLeak: mathResults,
-    };
-
-    res.json(resultPayload);
-  } catch (error: any) {
-    console.error("Audit API Error:", error);
-    res.status(500).json({
-      error: "Failed to perform Gladiator Protocol audit",
-      message: error?.message || "Internal server error",
-    });
-  }
-});
-
-// ── Log Audit to BigQuery ─────────────────────────────────────────────────
-app.post("/api/log-audit", async (req, res) => {
-  try {
-    const payload = req.body;
-    if (!payload || !payload.clientInfo) {
-      return res.status(400).json({ error: "Missing audit payload" });
+    if (speechResult) {
+        const result = await getAiResponse(speechResult);
+        aiText = result.text;
+        modelUsed = result.model;
     }
 
-    const dataset = bq.dataset("ignitus_audits");
-    const table   = dataset.table("audit_log");
+    // Escape special XML characters
+    const escapedAiText = aiText
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
 
-    const row = {
-      audit_id:          payload.clientInfo.id || `audit-${Date.now()}`,
-      client_name:       payload.clientInfo.clientName || "",
-      target_domain:     payload.clientInfo.targetDomain || "",
-      niche:             payload.clientInfo.niche || "",
-      location:          payload.clientInfo.location || "",
-      avg_job_value:     payload.clientInfo.avgJobValue || 0,
-      current_leads:     payload.clientInfo.currentLeads || 0,
-      close_rate:        payload.clientInfo.closeRate || 0,
-      monthly_leak:      payload.calculatedLeak?.monthlyLeak || 0,
-      annual_leak:       payload.calculatedLeak?.annualLeak || 0,
-      efficiency_lift:   payload.calculatedLeak?.efficiencyLiftPct || 0,
-      rcs_bot_id:        process.env.RCS_BOT_ID || "",
-      site_node:         process.env.NEXT_PUBLIC_SITE_NODE || "",
-      created_at:        BigQuery.timestamp(new Date()),
-    };
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Joanna-Neural">${escapedAiText}</Say>
+    <Gather input="speech" action="/api/voice" method="POST" speechTimeout="auto">
+        <Say voice="Polly.Joanna-Neural"></Say>
+    </Gather>
+</Response>`;
 
-    await table.insert([row]);
-    res.json({ success: true, audit_id: row.audit_id });
-  } catch (error: any) {
-    console.error("BigQuery log error:", error);
-    res.status(500).json({ error: "Failed to log audit", message: error?.message });
-  }
+    console.log(`[${modelUsed}] Tiana says: ${aiText}`);
+
+    res.setHeader('Content-Type', 'text/xml');
+    res.send(twiml);
 });
 
-export default app;
-
-async function startServer() {
-  // Vite middleware in dev
-  if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
+// Used for local testing
+if (process.env.NODE_ENV !== 'production' && require.main === module) {
+    const port = process.env.PORT || 8080;
+    app.listen(port, () => {
+        console.log(\`Tiana Voice webhook running on port \${port}\`);
     });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Ignitus Core Server running on http://0.0.0.0:${PORT}`);
-  });
 }
 
-// Only start the standalone HTTP listener if not running in a serverless environment (e.g. Vercel)
-if (!process.env.VERCEL) {
-  startServer();
-}
+export { app };

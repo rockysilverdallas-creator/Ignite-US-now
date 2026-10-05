@@ -267,7 +267,7 @@ ${agreement.checkoutUrl}`;
             )}
 
             <div className="pt-2 text-[11px] font-mono text-neutral-500 text-center">
-              Powered by Stripe ACH & Instant Card Ingestion
+              Powered by PayPal Express & Instant ACH Ingestion
             </div>
           </div>
 
