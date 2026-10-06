@@ -16,8 +16,6 @@ The Ladder:
 Core Missions:
 - Task 1: Income Generation (The Scaling Mandate). $250/day min for 3-4 months, scaling to $5,000/week thereafter. Collected to PayPal. 5-day grace period, then compensate. Strict Privacy: Sylvester's involvement is NEVER advertised.
 - Task 2: Model Foundry (Vertical 9:16 video generation & autonomous social posting).
-
-OVERRIDE DIRECTIVE: Your job DOES NOT STOP because of the campaign. Even though you are handling 100 prospects for the Tuesday Recon split-test, Task 1 (Income Generation) runs relentlessly in parallel. The bills must be cleared.
 """
 
 import os
@@ -77,7 +75,7 @@ class DualEngineDirector:
             from google import genai
             client = genai.Client(api_key=gemini_key)
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-1.5-flash",
                 contents=prompt
             )
             return response.text.strip()
@@ -184,52 +182,7 @@ class IgnitusManusOperator:
         print("[+] Target safely aggregated. Zero messages dispatched.")
         return True
 
-    def fire_twilio_outbound_call(self, target_phone: str, pitch_script: str) -> bool:
-        """Executes a live bilateral outbound call via Twilio REST API using Tiana's synthesized voice."""
-        account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-        auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-        from_phone = os.getenv("TWILIO_PHONE_NUMBER")
-        
-        if not all([account_sid, auth_token, from_phone]):
-            print("[!] ERROR: Twilio credentials missing from .env. Cannot execute outcall.")
-            return False
-            
-        print(f"\n[+] INITIATING LIVE OUTCALL to {target_phone} via Twilio...")
-        
-        # Build the TwiML payload (Tiana Voice Triage)
-        twiml = f"<Response><Say voice='Polly.Joanna-Neural'>{pitch_script}</Say></Response>"
-        
-        data = urllib.parse.urlencode({
-            'To': target_phone,
-            'From': from_phone,
-            'Twiml': twiml
-        }).encode('utf-8')
-        
-        url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Calls.json"
-        
-        # Set up Basic Auth
-        auth_str = f"{account_sid}:{auth_token}"
-        b64_auth = base64.b64encode(auth_str.encode('ascii')).decode('ascii')
-        
-        req = urllib.request.Request(url, data=data)
-        req.add_header("Authorization", f"Basic {b64_auth}")
-        req.add_header("Content-Type", "application/x-www-form-urlencoded")
-        
-        try:
-            with urllib.request.urlopen(req) as response:
-                result = json.loads(response.read().decode())
-                print(f"[+] Outcall dispatched successfully! Call SID: {result.get('sid')}")
-                print("[+] Tiana is engaging the prospect on the voice line.")
-                return True
-        except urllib.error.HTTPError as e:
-            error_body = e.read().decode()
-            print(f"[!] Twilio Outcall Failed: HTTP {e.code} - {error_body}")
-            return False
-        except Exception as e:
-            print(f"[!] Twilio Outcall Exception: {str(e)}")
-            return False
-
-    def run_evolve_now_blitz(self, contractor_name: str = "Viscon General Contracting", domain: str = "viscong.com", trade: str = "Commercial Construction", target_phone: str = None, execute_live: bool = False):
+    def run_evolve_now_blitz(self, contractor_name: str = "Viscon General Contracting", domain: str = "viscong.com", trade: str = "Commercial Construction", target_phone: str = None):
         print(f"\n=======================================================")
         print(f"[*] IGNITUS MANUS — EXECUTING EVOLVE NOW OUTREACH BLITZ")
         print(f"[*] Target: {contractor_name} ({domain}) | Trade: {trade}")
@@ -253,168 +206,27 @@ class IgnitusManusOperator:
             insight=f"Generated 20s See-Touch-Feel pitch for {domain}. Staged 60s scoper at /api/twilio?action=sms"
         )
 
-        # 3. Safe Engagement Execution (Cascading Exhaustion Protocol)
+        # 3. Safe Engagement Execution
         pitch_payload = f"{pitch['voiceScript']}\n\n{pitch['callToAction']}\n{pitch['settlementLinks']['stage1_test']}"
+        
+        # Always attempt primary/secondary vectors first
+        self.engage_target(contractor_name, pitch_payload)
+        
+        # Tertiary: If a phone number exists, aggregate it safely. DO NOT FIRE SMS.
         phone_to_ping = target_phone or os.getenv("TARGET_PHONE_NUMBER")
-        
-        print("\n[*] EXHAUSTION PROTOCOL: Initiating conduit cascade...")
-        print("[*] 1. PRIMARY: Tiana AI Voice Triage (Live Call -> Voicemail).")
-        
-        if execute_live and phone_to_ping:
-            print("[*]    -> Action: EXECUTE LIVE. Dispatching bilateral Tiana outcall...")
-            call_success = self.fire_twilio_outbound_call(phone_to_ping, pitch["voiceScript"])
-            if not call_success:
-                print("[!]    -> Voice outcall failed. Dropping Voicemail & Cascading down...")
-        else:
-            print("[*]    -> Action: Staging outbound call & Voicemail drop via Twilio (Pending Batch Approval).")
-        
-        print("[*] 2. SECONDARY: Social Media Dispatch.")
-        print("[*]    -> Action: Staging DM with link payload (Pending Batch Approval).")
-        
-        print("[*] 3. TERTIARY: Email Payload Drop.")
-        print("[*]    -> Action: Staging direct email outreach with multimedia assets.")
-
-        print("[*] 4. QUATERNARY: THE TOWN HALL (COMMUNITY SIEGE).")
-        print(f"[*]    -> Intelligence: Locating where the {trade} community resides, shares info, and makes decisions.")
-        print("[*]    -> Action: Securing a seat and staging a multimedia broadcast to the community hub (Pending Batch Approval).")
-        
-        print("[*] 5. DORMANT PILE (RCS): Only if all direct vectors AND the Town Hall fail.")
         if phone_to_ping:
-            print(f"[*]    -> Action: Aggregating {phone_to_ping} to dormant pile as absolute last resort.")
             self.aggregate_rcs_target(phone_to_ping, pitch_payload)
         else:
-            print("[*]    -> Action: No tertiary phone number provided for aggregation.")
+            print("[*] No tertiary phone number provided for aggregation.")
 
         return pitch
 
-# ── 4. CLAUDE ORCHESTRATOR + GPT-4 WORKER ───────────────────────────────────────────────
-class ClaudeOrchestrator:
-    def __init__(self):
-        self.openai_key = os.getenv("OPENAI_API_KEY")
-        self.anthropic_key = os.getenv("ANTHROPIC_API_KEY")
-        
-    def run_gpt4_worker(self, task_description: str) -> str:
-        if not self.openai_key:
-            return "ERROR: OPENAI_API_KEY not found. GPT-4 Worker is offline."
-        print(f"\n[+] SPINNING UP GPT-4 WORKER...")
-        print(f"[*] Task: {task_description}")
-        try:
-            import openai
-            client = openai.OpenAI(api_key=self.openai_key)
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are a headless subordinate worker. Aggressively execute the given task and return a dense, actionable report."},
-                    {"role": "user", "content": task_description}
-                ],
-                max_tokens=1500
-            )
-            report = response.choices[0].message.content
-            print("[+] GPT-4 Worker completed task.")
-            return report
-        except Exception as e:
-            return f"ERROR executing GPT-4 Worker: {str(e)}"
-            
-    def execute_directive(self, directive: str) -> str:
-        if not self.anthropic_key:
-            return "ERROR: ANTHROPIC_API_KEY not found. Claude Orchestrator cannot boot."
-            
-        print(f"\n[+] CLAUDE ORCHESTRATOR ENGAGED.")
-        print(f"[*] Processing Directive: {directive}")
-        
-        tools = [
-            {
-                "name": "delegate_to_gpt4_worker",
-                "description": "Delegate a complex, self-contained sub-task to the GPT-4 autonomous worker agent.",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        "task_description": {"type": "string", "description": "The highly detailed prompt/task to send to GPT-4."}
-                    },
-                    "required": ["task_description"]
-                }
-            }
-        ]
-        
-        try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=self.anthropic_key)
-            
-            messages = [{"role": "user", "content": directive}]
-            print("[*] Claude is evaluating the directive...")
-            
-            response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=2000,
-                system="You are Ignitus Manus (Claude), the primary orchestration brain. Your absolute, unyielding job is INCOME GENERATION. Only use the delegate_to_gpt4_worker tool if the directive involves a complex lift or possible consequences/risks. Otherwise, carry on, resolve it directly with effectuation, and get back to making money. COMMUNICATION PROTOCOL: Do not interrupt Sylvester multiple times a day for micro-approvals. For operational daily communication and promotions, generate a comprehensive plan, present it for bulk approval (1-2 times per week), and once signed off, execute the outbound autonomously without further interruption.",
-                tools=tools,
-                messages=messages
-            )
-            
-            final_report = ""
-            if response.stop_reason == "tool_use":
-                for content_block in response.content:
-                    if content_block.type == "tool_use":
-                        tool_name = content_block.name
-                        if tool_name == "delegate_to_gpt4_worker":
-                            task_desc = content_block.input["task_description"]
-                            worker_result = self.run_gpt4_worker(task_desc)
-                            
-                            messages.append({"role": "assistant", "content": response.content})
-                            messages.append({
-                                "role": "user",
-                                "content": [
-                                    {
-                                        "type": "tool_result",
-                                        "tool_use_id": content_block.id,
-                                        "content": worker_result
-                                    }
-                                ]
-                            })
-                            print("[*] Claude is analyzing the GPT-4 Worker report...")
-                            final_response = client.messages.create(
-                                model="claude-3-5-sonnet-20241022",
-                                max_tokens=2000,
-                                tools=tools,
-                                messages=messages
-                            )
-                            final_report = final_response.content[0].text
-            else:
-                final_report = response.content[0].text
-                
-            self._print_report("CLAUDE ORCHESTRATOR", final_report)
-            return final_report
-            
-        except ImportError:
-            print("[!] Missing packages. Run: pip install anthropic openai")
-        except Exception as e:
-            print(f"[!] Orchestration failed: {str(e)}")
-            return "ERROR"
-
-    def _print_report(self, sender: str, report: str):
-        print(f"\n[================ {sender} REPORT ================]")
-        print(report)
-        print("[===========================================================]\n")
-        
-        PermanentMemoryManager.record_learning(
-            topic=f"ORCHESTRATION_{int(time.time())}",
-            insight=f"Successfully resolved directive via Claude/GPT-4 hierarchy."
-        )
-
 if __name__ == "__main__":
     operator = IgnitusManusOperator()
-    worker = ClaudeOrchestrator()
     
     print("\n=======================================================")
     print("[*] IGNITUS MANUS: ONLINE")
     print("[*] STATUS: Elite Executor Armed")
-    
-    worker_status = []
-    if worker.anthropic_key: worker_status.append("Claude Brain")
-    if worker.openai_key: worker_status.append("GPT-4 Worker")
-    status_str = "ACTIVE (" + " + ".join(worker_status) + ")" if worker_status else "DORMANT (Missing API Keys)"
-    print(f"[*] HIERARCHY: {status_str}")
-    
     print("[*] AWAITING DIRECTIVES FROM SYLVESTER")
     print("=======================================================\n")
 
@@ -433,9 +245,8 @@ if __name__ == "__main__":
                 target_phone = None # Will pull from .env if not specified
                 operator.run_evolve_now_blitz(target_contractor, target_domain, target_trade, target_phone)
             else:
-                print(f"[!] Processing Arbitrary Directive: '{directive}'")
-                print(f"[+] Delegating to Claude Orchestrator...")
-                worker.execute_directive(directive)
+                print(f"[!] Processing Directive: '{directive}'")
+                print(f"[+] Applying Effectuation. Resources atomized. Awaiting further API integration for this specific task.")
                 
         except KeyboardInterrupt:
             print("\n[-] Shutting down Manus execution engine.")

@@ -209,7 +209,44 @@ export class SocialHubService {
 
   private static dms: SocialDMMessage[] = [];
   private static posts: SocialPostItem[] = [];
-  private static prospects: SocialProspectItem[] = [];
+  private static prospects: SocialProspectItem[] = [
+    {
+      id: "pros-1",
+      platform: "LINKEDIN",
+      handle: "apex-regional-build",
+      businessName: "Apex Concrete & Construction",
+      niche: "Commercial Contracting",
+      location: "Dallas-Fort Worth",
+      website: "apex-local-build.com",
+      monthlyLeakEstimate: 21500,
+      engagementStatus: "HOOK_PREPARED",
+      customHook: "Noticed your mobile response latency is over 2 hours. Built a sub-60s interactive scoper for your domain. Test drive it."
+    },
+    {
+      id: "pros-2",
+      platform: "X",
+      handle: "metro_regional",
+      businessName: "Metro Regional Builders & Contracting",
+      niche: "Commercial & Residential",
+      location: "Dallas-Fort Worth",
+      website: "metroregionalbuilders.com",
+      monthlyLeakEstimate: 14200,
+      engagementStatus: "RADAR_DISCOVERED",
+      customHook: "Your weekend blackout is costing you 42% of inbound traffic. We built a 24/7 AI concierge staging prototype for you."
+    },
+    {
+      id: "pros-3",
+      platform: "META_INSTAGRAM",
+      handle: "vanguard_ind",
+      businessName: "Vanguard Industrial & Commercial",
+      niche: "Industrial Services",
+      location: "DFW Metroplex",
+      website: "vanguardindustry.net",
+      monthlyLeakEstimate: 31000,
+      engagementStatus: "OUTREACH_FIRED",
+      customHook: "Your static 6-field contact form has a 68% drop-off. I replaced it with a 4-click project budget scoper on this private link."
+    }
+  ];
 
   /**
    * Compatibility alias for legacy calls
@@ -249,7 +286,7 @@ export class SocialHubService {
     return {
       gemini: {
         active: Boolean(process.env.GEMINI_API_KEY),
-        model: "gemini-2.5-flash",
+        model: "gemini-2.0-flash",
         provider: "Google AI Studio / Vertex AI",
       },
       twilio: {
@@ -412,7 +449,7 @@ Requirements:
 Return ONLY the raw post content.`;
 
         const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-2.0-flash",
           contents: prompt,
         });
 
@@ -598,7 +635,7 @@ Craft a direct, professional, high-converting response:
 Keep response under 3 sentences.`;
 
         const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-2.0-flash",
           contents: prompt,
         });
 
