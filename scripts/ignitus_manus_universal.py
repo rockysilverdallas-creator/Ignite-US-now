@@ -426,12 +426,25 @@ if __name__ == "__main__":
                 break
             
             if "blitz" in directive.lower() or "evolve" in directive.lower():
-                print("[+] Understood. Initiating Evolve Now Outreach Blitz...")
-                target_contractor = "Viscon General Contracting"
-                target_domain = "viscong.com"
-                target_trade = "Commercial Construction"
-                target_phone = None # Will pull from .env if not specified
-                operator.run_evolve_now_blitz(target_contractor, target_domain, target_trade, target_phone)
+                print("[+] Understood. Initiating Evolve Now Outreach Blitz (Loading Queue)...")
+                
+                queue_path = os.path.join(os.path.dirname(__file__), "..", "src", "data", "dfwIngestionQueue.json")
+                if os.path.exists(queue_path):
+                    with open(queue_path, "r", encoding="utf-8") as f:
+                        prospects = json.load(f)
+                    
+                    print(f"[*] Found {len(prospects)} prospects in the DFW Ingestion Queue.")
+                    for p in prospects:
+                        target_contractor = p.get("contractorName", "Unknown")
+                        target_domain = p.get("domain", "Unknown")
+                        target_trade = p.get("trade", "Unknown")
+                        target_phone = p.get("phone", None)
+                        
+                        operator.run_evolve_now_blitz(target_contractor, target_domain, target_trade, target_phone)
+                        time.sleep(2) # Brief pause between targets
+                else:
+                    print("[!] ERROR: DFW Ingestion Queue not found. Falling back to default target.")
+                    operator.run_evolve_now_blitz("Viscon General Contracting", "viscong.com", "Commercial Construction", None)
             else:
                 print(f"[!] Processing Arbitrary Directive: '{directive}'")
                 print(f"[+] Delegating to Claude Orchestrator...")
